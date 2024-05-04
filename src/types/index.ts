@@ -1,13 +1,12 @@
 
-interface IPage {
-    counter: number;
-    catalog: HTMLElement[];
+export enum PaymentMethod {
+    Cash = "Наличный",
+    NonCash = "Безналичный",
 }
 
 export interface IOrderForm {
-    email: string;
-    phone: string;
     address:string;
+    paymentMethod: PaymentMethod;
 }
 
 export interface IOrder extends IOrderForm {
@@ -15,6 +14,11 @@ export interface IOrder extends IOrderForm {
 }
 export interface IOrderResult {
     id: string;
+}
+
+export interface IUserForm {
+    email:string;
+    phone:string;
 }
 
 export interface IBasketModel {
@@ -61,9 +65,18 @@ export class BasketModel implements IBasketModel {
 export interface IProduct {
     id: string;
     title: string;
-    cost: string;
+    price: string;
     description?: string;
+    image: string;
+    category:string;
 }
+
+export interface IProductItem {
+    description: string;
+}
+
+export type ICard = IProduct & IProductItem;
+export type OpenCrad = IProduct;
 
 export interface ICatalogModel {
     items: IProduct[];
@@ -94,29 +107,32 @@ export interface IView {
 
 export class BasketItemsView implements IView {
     protected title: HTMLSpanElement;
-    protected addButton: HTMLButtonElement;
+    protected price: HTMLSpanElement;
+    protected index : HTMLSpanElement;
     protected removeButton: HTMLButtonElement;
 
     protected id: string | null;
 
     constructor(protected container: HTMLElement, protected events: IEventEmitter){
-        this.title = container.querySelector('.basket-item__title') as HTMLSpanElement;
-        this.addButton = container.querySelector('.basket-item__add') as HTMLButtonElement;
-        this.removeButton = container.querySelector('.basket-item__remove') as HTMLButtonElement;
+        this.title = container.querySelector('.card__title') as HTMLSpanElement;
+        this.price = container.querySelector('.card__price') as HTMLSpanElement;
+        this.removeButton = container.querySelector('.basket__item-delete') as HTMLButtonElement;
+        this.index = container.querySelector('.basket__item-index') as HTMLSpanElement;
 
-        this.addButton.addEventListener('click', () =>{
-            this.events.emit('ui:basket-add', {id: this.id});
-        })
+       
 
         this.removeButton.addEventListener('click', () =>{
             this.events.emit('ui:basket-remove', {id: this.id});
         })
     }
 
-    render(data: {id: string, title: string}) {
+    render(data: {id: string, title: string, price: string, index : string }) {
         if (data){
             this.id = data.id;
             this.title.textContent = data.title;
+            this.price.textContent = data.price;
+            this.index.textContent = data.index;
+            
         }
         return this.container;
     }
@@ -134,9 +150,11 @@ export class BasketView implements IView {
 
 
 export interface IAppState {
-    catalog: IProduct[];
+    catalog: ICard[];
     basket: string[];
     preview: string | null;
     order: IOrder | null;
     loading: boolean;
 }
+
+export type FormErrors = Partial<Record<keyof IOrder, string>>;
