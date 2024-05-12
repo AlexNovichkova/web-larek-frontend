@@ -1,4 +1,4 @@
-import { IOrder, IProduct,  PaymentMethod,  Validation, emptyOrder } from "../../types";
+import { IOrder, IProduct,  Validation, emptyOrder } from "../types";
 
 export class BasketState{
 	protected _value: { items: IProduct[] };

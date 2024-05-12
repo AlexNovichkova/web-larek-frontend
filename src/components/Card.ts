@@ -1,6 +1,6 @@
 import { IProduct, Validation } from "../types";
 import {Component} from "./base/Component";
-import { EventEmitter } from "./base/events";
+import { EventEmitter } from "./base/Events";
 
 export const categories: Record<string, string> = {
 	'софт-скил': 'soft',
@@ -67,8 +67,7 @@ export class Card<T> extends Component<ICard<T>> {
             container.addEventListener('click', actions.onClick);
         }
 
-        
-
+    
     }
     
     render(model: ICard<T>) {
@@ -108,15 +107,13 @@ export class Card<T> extends Component<ICard<T>> {
     set image(value: string) {
 		this._image && this.setImage(this._image, value);
 	}
-
     
     set category(value: string) {
         this.setText(this._category, value)
     }
 
-
     set price(value: string) {
-        this._price && (this._price.textContent = value);
+        this._price && this.setText(this._price, value);
     }
 
     get price(): string {
@@ -127,9 +124,9 @@ export class Card<T> extends Component<ICard<T>> {
 		if (this._category) {
 			this._category.classList.forEach(
 				(x) =>
-					x.startsWith('card__category_') && this._category.classList.remove(x)
+					x.startsWith('card__category_') && this.toggleClass(this._category, x, false)
 			);
-			this._category.classList.add(`card__category_${value}`);
+			this.toggleClass(this._category, `card__category_${value}`, true);
 		}
 	}
 

@@ -1,17 +1,17 @@
 import './scss/styles.scss';
 import {cloneTemplate, ensureElement, isEmpty} from "./utils/utils";
 import {API_URL, CDN_URL} from "./utils/constants";
-import {EventEmitter} from "./components/base/events";
+import {EventEmitter} from "./components/base/Events";
 import { ShopAPI } from './components/ShopAPI';
 import {IOrderForm, IProduct, formatProductPrice, Validation, togglePaymentType} from './types';
 import {Page} from "./components/Page";
 import { AppState, CatalogChangeEvent } from './components/AppData';
 import { Card, FullProductView, categories } from './components/Card';
 import { Modal } from './components/common/Modal';
-import { Basket, formatTotalPrice } from './components/common/Basket';
-import { BasketState, OrderState } from './components/base/state';
+import { Basket, formatTotalPrice } from './components/Basket';
+import { BasketState, OrderState } from './components/State';
 import { OrderPaymentStepView, OrderUserContactsStep } from './components/Order';
-import { Success } from './components/common/Sucsess';
+import { Success } from './components/Sucsess';
 // Все шаблоны
 const cardCatalogTemplate = ensureElement<HTMLTemplateElement>('#card-catalog');
 const cardPreviewTemplate = ensureElement<HTMLTemplateElement>('#card-preview');
@@ -185,7 +185,7 @@ events.on(/^contacts\..*:change/, (data: { field: keyof IOrderForm, value: strin
 });
 
 
-events.on('orderPaymentStepView:submit', () => { 
+events.on('order:submit', () => { 
 	modal.render({
 		content: orderContactsStepView.render({
             phone: '',
@@ -206,7 +206,7 @@ events.on('order_change_payment_type', () => {
 
 
 
-events.on('order:submit', () => {
+events.on('contacts:submit', () => {
     console.log('Отправляемый заказ:', appData.order);
     api.orderCards(appData.order)
         .then((result) => {

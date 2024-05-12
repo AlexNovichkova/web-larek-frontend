@@ -1,8 +1,9 @@
-import {Component} from "../base/Component";
-import { ensureElement, cloneTemplate} from "../../utils/utils";
-import { IProduct, Validation, formatProductPrice } from "../../types";
-import { BasketCardView, categories} from "../Card";
-import { EventEmitter } from "../base/events";
+import { IProduct, Validation, formatProductPrice } from "../types";
+import { cloneTemplate, ensureElement } from "../utils/utils";
+import { BasketCardView, categories } from "./Card";
+import { Component } from "./base/Component";
+import { EventEmitter } from "./base/Events";
+
 
 
 interface IBasketView {
