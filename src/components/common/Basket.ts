@@ -1,59 +1,80 @@
 import {Component} from "../base/Component";
-import { createElement, ensureElement, formatNumber,cloneTemplate} from "../../utils/utils";
-import {EventEmitter} from "../base/events";
-import { BasketItemsView } from "../../types";
-import { AppState } from "../AppData";
+import { ensureElement, cloneTemplate} from "../../utils/utils";
+import { IProduct, Validation, formatProductPrice } from "../../types";
+import { BasketCardView, categories} from "../Card";
+import { EventEmitter } from "../base/events";
 
 
 interface IBasketView {
-    items: BasketItemsView[];
-    total: number;
-    selected: string[];
+    items: HTMLElement[];
+    total: string;
+    validation?: Validation;
+}
+
+interface IBasketViewEvents {
+	startOrder: () => void;
 }
 
 export class Basket extends Component<IBasketView> {
-    protected _list: HTMLElement;
+    protected _items: HTMLElement;
     protected _total: HTMLElement;
-    protected _button: HTMLElement;
+    protected _submitButton: HTMLButtonElement;
+	
 
-    constructor(container: HTMLElement, protected events: EventEmitter) {
+    constructor(container: HTMLElement, events: IBasketViewEvents) {
         super(container);
 
-        this._list = ensureElement<HTMLElement>('.basket__list', this.container);
-        this._total = this.container.querySelector('.basket__price');
-        this._button = this.container.querySelector('.basket__button');
+        this._items = ensureElement<HTMLElement>('.basket__list', this.container);
+        this._total = ensureElement<HTMLElement>('.basket__price', this.container);
+        this._submitButton = ensureElement<HTMLButtonElement>('.basket__button',this.container);
 
-        if (this._button) {
-            this._button.addEventListener('click', () => {
-                events.emit('order:open');
-            });
-        }
-
+        this._submitButton.addEventListener('click', () => {
+			events.startOrder();
+		});
         this.items = [];
     }
 
     set items(items: HTMLElement[]) {
-        if (items.length) {
-            this._list.replaceChildren(...items);
-        } else {
-            this._list.replaceChildren(createElement<HTMLParagraphElement>('p', {
-                textContent: 'Корзина пуста'
-            }));
-        }
+		this._items.replaceChildren(...items);
+	}
+
+	set total(value: number) {
+		this.setText(this._total, value);
+	}
+
+	set validation(value: Validation) {
+		this.setDisabled(this._submitButton, value.length !== 0);
+	}
+
+    renderBasketItems(products: IProduct[], events: EventEmitter) {
+        const items = products.map((product, index) => {
+            const productCard = new BasketCardView(cloneTemplate(ensureElement<HTMLTemplateElement>('#card-basket')), {
+                onDeleteClick: () => {
+                    events.emit('ui:basket-remove', { product, basketView: this });
+                    
+                }
+            });
+
+            return productCard.render({
+                ...product,
+                price: formatProductPrice(product.price),
+                categoryClass: categories[product.category],
+                itemIndex: index + 1
+            });
+        });
+
+        this.items = items;
     }
 
-    set selected(items: string[]) {
-        if (items.length) {
-            this.setDisabled(this._button, false);
-        } else {
-            this.setDisabled(this._button, true);
-        }
-    }
-
-    set total(total: number) {
-        this.setText(this._total, formatNumber(total));
-    }
-
-
+     
     
 }
+
+export function formatTotalPrice(total: Basket['total']): string {
+    if (total === null || typeof total === 'undefined') {
+        return 'Бесценно';
+    } else {
+        return total + ' синапсов';
+    }
+}
+

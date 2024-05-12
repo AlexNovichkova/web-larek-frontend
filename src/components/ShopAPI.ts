@@ -1,12 +1,11 @@
 
 import { Api, ApiListResponse } from './base/api';
-import { IProduct, ICatalogModel, BasketModel, IOrderForm, IOrder, IOrderResult } from "../types";
+import { IProduct, IOrder, SentOrder } from "../types";
 
 export interface IShopAPI {
     getCardItem: (id: string) => Promise<IProduct>;
     getCatalog: () => Promise<IProduct[]>;
-    getBasketItems: () => Promise<IProduct[]>;
-    createOrder: (order: IOrderForm) => Promise<IOrderResult>;
+    orderCards: (order: IOrder) => Promise<SentOrder>;
 }
 
 export class ShopAPI extends Api implements IShopAPI {
@@ -15,6 +14,7 @@ export class ShopAPI extends Api implements IShopAPI {
         super(baseUrl, options);
         this.cdn = cdn;
     }
+    
 
     getCardItem(id: string): Promise<IProduct> {
         return this.get(`/product/${id}`).then(
@@ -34,14 +34,12 @@ export class ShopAPI extends Api implements IShopAPI {
             }))
         );
     }
+    
 
-    getBasketItems(): Promise<IProduct[]> {
-        return this.get('/basket/items')
-        .then((data: ApiListResponse<IProduct>) => data.items);
-    }
-
-    createOrder(order: IOrderForm): Promise<IOrderResult> {
-        return this.post('/order', order)
-        .then((data: IOrderResult) => data);
+    orderCards(order: IOrder): Promise<SentOrder> {
+        return this.post('/order', { ...order, items: order.items.map((x) => x.id) })
+        .then((res: Pick<SentOrder, 'id' | 'total'>) => {
+            return { ...order, ...res };
+        });
     }
 }

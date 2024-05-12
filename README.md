@@ -6,6 +6,13 @@
 - src/ — исходные файлы проекта
 - src/components/ — папка с JS компонентами
 - src/components/base/ — папка с базовым кодом
+- src/common.blocks/ - файлы стилей для блоков
+- src/images/ - изображения
+- src/pages/ - файлы html
+- src/scss/ - общие файлы стилей
+- src/vendor/ - сторонние пакеты
+- src/types/ - типы, используемые приложением
+
 
 Важные файлы:
 - src/pages/index.html — HTML-файл главной страницы
@@ -43,284 +50,536 @@ yarn build
 
 ## Архитектура
 
+### Типы и Интерфейсы
+`PaymentMethod`
+**Описание:** Тип, представляющий методы оплаты в системе.
+**Типы:** 'card' | 'cash'
+
+`IOrderForm`
+**Описание:** Интерфейс формы заказа, содержащий информацию для выполнения заказа.
+**Свойства:**
+_payment:_ PaymentMethod - метод оплаты.
+_email:_ string - электронная почта клиента.
+_phone:_ string - телефонный номер клиента.
+_address:_ string - адрес доставки.
+_total:_ number - общая сумма заказа.
+
+`IOrderResult`
+**Описание:** Интерфейс результата заказа.
+**Свойства:**
+_id:_ string - уникальный идентификатор заказа.
+
+`IOrder`
+**Описание:** Интерфейс заказа, расширяющий IOrderForm добавлением списка товаров.
+**Свойства:**
+_items:_ IProduct[] - массив товаров в заказе.
+
+`OrderId`
+**Описание:** Тип, представляющий уникальный идентификатор заказа.
+_Тип:_ string
+
+`OrderTotal`
+**Описание:** Тип, представляющий общую сумму заказа.
+_Тип:_ number
+
+SentOrder
+
+**Описание:** Тип, представляющий отправленный заказ с идентификатором и общей суммой.
+_Тип:_ { id: OrderId; total: OrderTotal }
+
+`emptyOrder`
+**Описание:** Функция для создания пустого заказа.
+Возвращает: IOrder
+
+`togglePaymentType`
+**Описание:** Функция для переключения между типами оплаты.
+**Параметры:**
+_value:_ PaymentMethod - текущий метод оплаты.
+Возвращает: PaymentMethod - следующий метод оплаты.
+
+`IEventEmitter`
+**Описание:** Интерфейс для объектов, способных генерировать события.
+**Методы:**
+```
+emit(event: string, data: unknown): void` - метод для генерации событий.
+```
+
+`IProduct`
+**Описание:** Интерфейс продукта в каталоге.
+**Свойства:**
+_id:_ string - уникальный идентификатор продукта.
+_title:_ string - название продукта.
+_price:_ number | null - цена продукта, может быть null.
+_description?:_ string - описание продукта, необязательное поле.
+_image:_ string - ссылка на изображение продукта.
+_category:_ string - категория продукта.
+
+`formatProductPrice`
+**Описание:** Функция для форматирования цены продукта.
+**Параметры:**
+_price:_ IProduct['price'] - цена продукта.
+Возвращает: string - отформатированная строка цены.
+
+`IAppState`
+**Описание:** Интерфейс состояния приложения.
+**Свойства:**
+_catalog:_ IProduct[] - каталог продуктов.
+_basket:_ string[] - массив идентификаторов продуктов в корзине.
+_preview:_ string | null - идентификатор продукта для предпросмотра, может быть null.
+_order:_ IOrder | null - текущий заказ, может быть null.
+_loading:_ boolean - флаг загрузки данных.
+
+`FormErrors`
+**Описание:** Тип для ошибок формы.
+_Тип:_ Partial<Record<keyof IOrder, string>>
+
+`Validation`
+**Описание:** Тип для валидации данных.
+**Тип:** { key: string; error: string }[]
+
+---
+
 ### Модели
+### **Model<T>**
 
-Данный слой не зависит ни от каких частей приложения. Описывает модели данных, их интерфейсы и процедуры их преобразования
+**Описание**: Абстрактный базовый класс для моделей, позволяющий отличать модели от простых объектов с данными.
 
-#### Товар:
-```javascript
+**Конструктор**:
+- `constructor(data: Partial<T>, events: IEvents)`: Инициализирует модель с данными и событиями.
 
-export interface IProduct {
-    id: string;
-    title: string;
-    price: string;
-    description?: string;
-    image: string;
-    category:string;
-}
-```
+**Методы**:
+- `emitChanges(event: string, payload?: object)`: Сообщает о изменениях в модели.
 
+### AppState
+**Описание:** Класс AppState управляет состоянием приложения, включая каталог продуктов, корзину, текущий заказ и ошибки формы.
 
-#### Заказ:
+**Наследование:** Model<IAppState>
 
-```javascript
+**Свойства:**
 
-export enum PaymentMethod {
-    Cash = "Наличный",
-    NonCash = "Безналичный",
-}
+_basket:_ IProduct[] - массив продуктов в корзине.
+_catalog:_ IProduct[] - массив продуктов в каталоге.
+_loading:_ boolean - флаг загрузки данных.
+_order:_ IOrder - текущий заказ.
+_preview:_ string | null - идентификатор продукта для предпросмотра.
+_formErrors:_ FormErrors - объект с ошибками формы.
 
-export interface IOrderForm {
-    address:string;
-    paymentMethod: PaymentMethod;
-}
-```
+**Методы:**
 
-## Приложение :
-Модули и классы прикладного слоя могут использовать слой моделей и сервисный слой (сервисы и UI-компоненты приложения) Здесь происходит инициализация брокера событий, создание сервисов и UI-компонентов, начальная инициализация приложения; описываются требуемые для приложения интерфейсы взаимодействия с внешним миром
-### Брокер событий
-Обеспечивает работу событий. Его функции: возможность установить и снять слушателей событий, вызвать слушателей при возникновении события
-Класс имеет методы on ,  off ,  emit  — для подписки на событие, отписки от события и уведомления
-подписчиков о наступлении события соответственно.
-Дополнительно реализованы методы  onAll и  offAll  — для подписки на все события и сброса всех
-подписчиков.
-
-```javascript
+`setCatalog(items: IProduct[]): void` - устанавливает каталог продуктов и извещает об изменении.
+`setPreview(item: IProduct): void` - устанавливает предпросмотр продукта и извещает об изменении.
+`setOrderField(field: keyof IOrder, value: string): void` - устанавливает значение поля заказа и извещает о готовности заказа, если он валиден.
+`validateOrder(): boolean` - проверяет заказ на наличие ошибок и извещает об изменении ошибок формы.
 
 
-// Хорошая практика даже простые типы выносить в алиасы
-// Зато когда захотите поменять это достаточно сделать в одном месте
-type EventName = string | RegExp;
-type Subscriber = Function;
-type EmitterEvent = {
-    eventName: string,
-    data: unknown
-};
+### Сервис для работы с "API" Web Larek"
 
-export interface IEvents {
-    on<T extends object>(event: EventName, callback: (data: T) => void): void;
-    emit<T extends object>(event: string, data?: T): void;
-    trigger<T extends object>(event: string, context?: Partial<T>): (data: T) => void;
-}
+### **Api**
 
-/**
- * Брокер событий, классическая реализация
- * В расширенных вариантах есть возможность подписаться на все события
- * или слушать события по шаблону например
- */
-export class EventEmitter implements IEvents {
-    _events: Map<EventName, Set<Subscriber>>;
+**Описание**: Класс для работы с API.
 
-    constructor() {
-        this._events = new Map<EventName, Set<Subscriber>>();
-    }
+**Конструктор**:
+- `constructor(baseUrl: string, options: RequestInit = {})`: Инициализирует экземпляр Api с базовым URL и настройками.
 
-    /**
-     * Установить обработчик на событие
-     */
-    on<T extends object>(eventName: EventName, callback: (event: T) => void) {
-        if (!this._events.has(eventName)) {
-            this._events.set(eventName, new Set<Subscriber>());
-        }
-        this._events.get(eventName)?.add(callback);
-    }
+**Методы**:
+- `handleResponse(response: Response): Promise<object>`: Обрабатывает ответ от сервера.
+- `get(uri: string)`: Выполняет GET-запрос.
+- `post(uri: string, data: object, method: ApiPostMethods = 'POST')`: Выполняет POST-запрос.
 
-    /**
-     * Снять обработчик с события
-     */
-    off(eventName: EventName, callback: Subscriber) {
-        if (this._events.has(eventName)) {
-            this._events.get(eventName)!.delete(callback);
-            if (this._events.get(eventName)?.size === 0) {
-                this._events.delete(eventName);
-            }
-        }
-    }
+#### ShopAPI
+**Описание:** Класс ShopAPI предоставляет методы для взаимодействия с API магазина, включая получение данных о продуктах и управление заказами.
 
-    /**
-     * Инициировать событие с данными
-     */
-    emit<T extends object>(eventName: string, data?: T) {
-        this._events.forEach((subscribers, name) => {
-            if (name instanceof RegExp && name.test(eventName) || name === eventName) {
-                subscribers.forEach(callback => callback(data));
-            }
-        });
-    }
+**Наследование:** Api
 
-    /**
-     * Слушать все события
-     */
-    onAll(callback: (event: EmitterEvent) => void) {
-        this.on("*", callback);
-    }
+**Свойства:**
+`cdn: string`- базовый URL для CDN изображений.
 
-    /**
-     * Сбросить все обработчики
-     */
-    offAll() {
-        this._events = new Map<string, Set<Subscriber>>();
-    }
+Конструктор:
+`constructor(cdn: string, baseUrl: string, options?: RequestInit):` Создает экземпляр ShopAPI с заданными параметрами.
 
-    /**
-     * Сделать коллбек триггер, генерирующий событие при вызове
-     */
-    trigger<T extends object>(eventName: string, context?: Partial<T>) {
-        return (event: object = {}) => {
-            this.emit(eventName, {
-                ...(event || {}),
-                ...(context || {})
-            });
-        };
-    }
-}
-```
+**Методы:**
 
+`getCardItem(id: string): Promise<IProduct>` - получает данные о продукте по идентификатору.
+`getCatalog(): Promise<IProduct[]> - получает` каталог продуктов.
+`orderCards(order: IOrder): Promise<SentOrder>` - отправляет заказ и возвращает результат.
 
-### Основной модуль приложения
+### Тип "События приложения"
+### **IEvents**
+
+**Описание**: Интерфейс для работы с событиями в приложении.
+
+**Методы**:
+- `on<T extends object>(event: EventName, callback: (data: T) => void)`: Подписывается на событие.
+- `emit<T extends object>(event: string, data?: T)`: Инициирует событие.
+- `trigger<T extends object>(event: string, context?: Partial<T>)`: Создаёт триггер для события.
+
+### **EventEmitter**
+
+**Описание**: Реализация брокера событий.
+
+**Конструктор**:
+- `constructor()`: Инициализирует экземпляр EventEmitter.
+
+**Методы**:
+- `on<T extends object>(...)`: Устанавливает обработчик на событие.
+- `off(eventName: EventName, callback: Subscriber)`: Снимает обработчик с события.
+- `emit<T extends object>(...)`: Инициирует событие с данными.
+- `onAll(callback: (event: EmitterEvent) => void)`: Подписывается на все события.
+- `offAll()`: Сбрасывает все обработчики.
+- `trigger<T extends object>(...)`: Создаёт коллбек-триггер для события.
+
+---
+
+### Вспомогательные функции и классы
+
+#### **pascalToKebab**
+**Описание**: Преобразует строки из PascalCase в kebab-case.
+**Сигнатура**: `function pascalToKebab(value: string): string`
+
+#### **isSelector**
+**Описание**: Проверяет, является ли переданный аргумент строкой, которая может быть селектором.
+**Сигнатура**: `function isSelector(x: any): x is string`
+
+#### **isEmpty**
+**Описание**: Проверяет, является ли значение `null` или `undefined`.
+**Сигнатура**: `function isEmpty(value: any): boolean`
+
+#### **formatNumber**
+**Описание**: Форматирует число, добавляя разделители между группами цифр.
+**Сигнатура**: `function formatNumber(x: number, sep = ' '): string`
+
+#### **SelectorCollection**
+**Описание**: Тип, представляющий коллекцию селекторов.
+**Тип**: `string | NodeListOf<Element> | T[]`
+
+#### **ensureAllElements**
+**Описание**: Гарантирует, что все элементы, соответствующие селектору, будут найдены.
+**Сигнатура**: `function ensureAllElements<T extends HTMLElement>(selectorElement: SelectorCollection<T>, context: HTMLElement = document as unknown as HTMLElement): T[]`
+
+#### **SelectorElement**
+**Описание**: Тип, представляющий одиночный элемент или селектор.
+**Тип**: `T | string`
+
+#### **ensureElement**
+**Описание**: Гарантирует, что элемент, соответствующий селектору, будет найден.
+**Сигнатура**: `function ensureElement<T extends HTMLElement>(selectorElement: SelectorElement<T>, context?: HTMLElement): T`
+
+#### **cloneTemplate**
+**Описание**: Клонирует содержимое HTML-шаблона.
+**Сигнатура**: `function cloneTemplate<T extends HTMLElement>(query: string | HTMLTemplateElement): T`
+
+#### **bem**
+**Описание**: Генерирует имя и класс по методологии BEM.
+**Сигнатура**: `function bem(block: string, element?: string, modifier?: string): { name: string, class: string }`
+
+#### **getObjectProperties**
+**Описание**: Возвращает имена свойств объекта, соответствующие фильтру.
+**Сигнатура**: `function getObjectProperties(obj: object, filter?: (name: string, prop: PropertyDescriptor) => boolean): string[]`
+
+#### **setElementData**
+**Описание**: Устанавливает атрибуты данных элемента.
+**Сигнатура**: `function setElementData<T extends Record<string, unknown> | object>(el: HTMLElement, data: T): void`
+
+#### **getElementData**
+**Описание**: Получает типизированные данные из атрибутов данных элемента.
+**Сигнатура**: `function getElementData<T extends Record<string, unknown>>(el: HTMLElement, scheme: Record<string, Function>): T`
+
+#### **isPlainObject**
+**Описание**: Проверяет, является ли объект простым объектом.
+**Сигнатура**: `function isPlainObject(obj: unknown): obj is object`
+
+#### **isBoolean**
+**Описание**: Проверяет, является ли значение булевым.
+**Сигнатура**: `function isBoolean(v: unknown): v is boolean`
+
+#### **createElement**
+**Описание**: Создает DOM-элемент с заданными свойствами и дочерними элементами.
+**Сигнатура**: `function createElement<T extends HTMLElement>(tagName: keyof HTMLElementTagNameMap, props?: Partial<Record<keyof T, string | boolean | object>>, children?: HTMLElement | HTMLElement[]): T`
+
+---
+### Компоненты
+
+### Базовый компонент **Component<T>**
+
+**Описание**: Абстрактный базовый класс для компонентов, предоставляющий инструментарий для работы с DOM.
+
+**Конструктор**:
+- `constructor(container: HTMLElement)`: Инициализирует компонент с контейнером.
+
+**Методы**:
+- `toggleClass(element: HTMLElement, className: string, force?: boolean)`: Переключает класс элемента.
+- `setText(element: HTMLElement, value: unknown)`: Устанавливает текстовое содержимое элемента.
+- `setDisabled(element: HTMLElement, state: boolean)`: Меняет статус блокировки элемента.
+- `setHidden(element: HTMLElement)`: Скрывает элемент.
+- `setVisible(element: HTMLElement)`: Показывает элемент.
+- `setImage(element: HTMLImageElement, src: string, alt?: string)`: Устанавливает изображение с альтернативным текстом.
+- `render(data?: Partial<T>): HTMLElement`: Рендерит корневой DOM-элемент компонента.
+
+---
+
+### Компонент для отображения "Заказа"
+
+#### **OrderPaymentStepView**
+
+**Наследуется от**: `Form<IOrderForm>`
+
+**Описание**: Представление шага оплаты заказа, позволяет пользователю выбрать метод оплаты и ввести адрес доставки.
+
+**Свойства**:
+- `_buttonOnline`: HTMLButtonElement - кнопка для выбора онлайн-оплаты.
+- `_buttonOnReceipt`: HTMLButtonElement - кнопка для выбора оплаты при получении.
+- `_addressInput`: HTMLInputElement - поле ввода адреса доставки.
+
+**Методы**:
+- `constructor(container: HTMLFormElement, events: IEvents)`: Конструктор класса.
+- `set payment(value: IOrderForm['payment'])`: Устанавливает активный метод оплаты.
+
+---
+
+#### **OrderUserContactsStep**
+
+**Наследуется от**: `Form<IOrderForm>`
+
+**Описание**: Представление шага контактной информации пользователя, позволяет ввести email и телефон.
+
+**Свойства**:
+- `_emailInput`: HTMLInputElement - поле ввода электронной почты.
+- `_phoneNumberInput`: HTMLInputElement - поле ввода номера телефона.
+
+**Методы**:
+- `constructor(container: HTMLFormElement, events: IEvents)`: Конструктор класса.
+- `set phone(value: string)`: Устанавливает номер телефона.
+- `set email(value: string)`: Устанавливает электронную почту.
+
+### Компонент для отоброжения "Страницы"
+
+**Наследуется от**: `Component<IPage>`
+
+**Описание**: Компонент страницы, управляет элементами страницы, такими как счетчик корзины, каталог и блокировка страницы.
+
+**Свойства**:
+- `_counter`: HTMLElement - элемент счетчика корзины.
+- `_catalog`: HTMLElement - элемент каталога.
+- `_wrapper`: HTMLElement - обертка страницы.
+- `_basket`: HTMLElement - элемент корзины.
+
+**Методы**:
+- `constructor(container: HTMLElement, events: IEvents)`: Конструктор класса.
+- `set counter(value: number)`: Устанавливает значение счетчика корзины.
+- `set catalog(items: HTMLElement[])`: Заменяет элементы каталога.
+- `set locked(value: boolean)`: Блокирует или разблокирует страницу.
+
+### Компонент для отображения "Карточки товара"
+#### **Card<T>**
+
+**Наследуется от**: `Component<ICard<T>>`
+
+**Описание**: Компонент карточки продукта, отображает информацию о продукте, такую как название, описание, изображение и цена.
+
+**Свойства**:
+- `_category`: HTMLSpanElement - элемент категории продукта.
+- `_image`: HTMLImageElement - элемент изображения продукта.
+- `_title`: HTMLTitleElement - элемент названия продукта.
+- `_price`: HTMLSpanElement - элемент цены продукта.
+- `_description`: HTMLElement - элемент описания продукта.
+- `_addButton`: HTMLButtonElement - кнопка добавления в корзину.
+- `events`: EventEmitter - менеджер событий.
+
+**Методы**:
+- `constructor(container: HTMLElement, actions?: IProductViewEvents)`: Конструктор класса.
+- `render(model: ICard<T>)`: Рендерит модель карточки.
+- `setData(data: IProduct)`: Устанавливает данные продукта.
+- `set description(value: string | string[])`: Устанавливает описание продукта.
+- `set id(value: string)`: Устанавливает идентификатор продукта.
+- `set title(value: string)`: Устанавливает название продукта.
+- `set image(value: string)`: Устанавливает изображение продукта.
+- `set category(value: string)`: Устанавливает категорию продукта.
+- `set price(value: string)`: Устанавливает цену продукта.
+- `set categoryClass(value: string)`: Устанавливает класс категории продукта.
+
+---
+
+#### **FullProductView<T>**
+
+**Наследуется от**: `Card<T>`
+
+**Описание**: Полное представление продукта, расширяет базовую карточку дополнительными функциями и элементами управления.
+
+**Методы**:
+- `constructor(container: HTMLElement, actions?: Pick<ICardActions, 'toggleBasket'>)`: Конструктор класса.
+- `set isInBasket(inBasket: boolean)`: Устанавливает, находится ли продукт в корзине.
+- `set validation(value: ICard<T>['validation'])`: Устанавливает валидацию продукта.
+
+---
+
+#### **BasketCardView<T>**
+
+**Наследуется от**: `Card<T>`
+
+**Описание**: Представление карточки продукта в корзине, позволяет управлять продуктами в корзине.
+
+**Методы**:
+- `constructor(container: HTMLElement, events: Pick<ICardActions, 'onDeleteClick'>)`: Конструктор класса.
+- `set itemIndex(value: number)`: Устанавливает индекс элемента в корзине.
+
+### Компонент для отображения "Корзины"
+
+#### **Basket**
+
+**Наследуется от**: `Component<IBasketView>`
+
+**Описание**: Компонент корзины, управляет отображением товаров в корзине, их общей стоимостью и валидацией.
+
+**Свойства**:
+- `_items`: HTMLElement - элемент списка товаров в корзине.
+- `_total`: HTMLElement - элемент общей стоимости товаров.
+- `_submitButton`: HTMLButtonElement - кнопка для начала оформления заказа.
+
+**Методы**:
+- `constructor(container: HTMLElement, events: IBasketViewEvents)`: Конструктор класса.
+- `set items(items: HTMLElement[])`: Устанавливает элементы товаров в корзине.
+- `set total(value: number)`: Устанавливает общую стоимость товаров.
+- `set validation(value: Validation)`: Устанавливает валидацию для кнопки оформления заказа.
+- `renderBasketItems(products: IProduct[], events: EventEmitter)`: Рендерит элементы товаров в корзине.
+
+**Функции**:
+- `formatTotalPrice(total: Basket['total']): string`: Форматирует общую стоимость товаров в корзине.
+
+---
+
+### Компонент "Форма"
+
+#### **Form<T>**
+
+**Наследуется от**: `Component<IFormState>`
+
+**Описание**: Базовый класс формы, управляет валидацией и отображением ошибок.
+
+**Свойства**:
+- `_submit`: HTMLButtonElement - кнопка отправки формы.
+- `_errors`: HTMLElement - элемент для отображения ошибок валидации.
+
+**Методы**:
+- `constructor(container: HTMLFormElement, events: IEvents)`: Конструктор класса.
+- `onInputChange(field: keyof T, value: string)`: Обрабатывает изменения в полях ввода формы.
+- `set errors(value: string)`: Устанавливает текст ошибок валидации.
+- `set valid(value: boolean)`: Устанавливает состояние валидности формы, для обновления состояния кнопки.
+- `render(state: Partial<T> & IFormState)`: Рендерит состояние формы с учетом валидности и ошибок.
+
+### Компонент для отображения "Модального окна"
+
+#### **Modal**
+
+**Наследуется от**: `Component<IModalData>`
+
+**Описание**: Компонент модального окна, управляет отображением и закрытием модального содержимого.
+
+**Свойства**:
+- `_closeButton`: HTMLButtonElement - кнопка для закрытия модального окна.
+- `_content`: HTMLElement - контейнер для содержимого модального окна.
+
+**Методы**:
+- `constructor(container: HTMLElement, events: IEvents)`: Конструктор класса.
+- `set content(value: HTMLElement)`: Заменяет содержимое модального окна.
+- `open()`: Открывает модальное окно.
+- `close()`: Закрывает модальное окно и очищает его содержимое.
+- `render(data: IModalData): HTMLElement`: Рендерит модальное окно с данными и открывает его.
+
+---
+### Компонент "Успешное взавершение заказа"
+
+#### **Success**
+
+**Наследуется от**: `Component<ISuccess>`
+
+**Описание**: Компонент успешного выполнения действия, отображает сообщение об успехе и управляет его закрытием.
+
+**Свойства**:
+- `_closeButton`: HTMLButtonElement - кнопка для закрытия сообщения об успехе.
+- `_description`: HTMLElement - элемент для отображения описания успешно завершённого события.
+
+**Методы**:
+- `constructor(container: HTMLElement, events: ISuccessActions)`: Конструктор класса.
+- `set description(value: string)`: Устанавливает текст описания для сообщения об успешном завершении заказа.
+
+### Компоненты состояний
+
+#### **BasketState**
+
+**Описание**: Состояние корзины, управляет товарами в корзине.
+
+**Методы**:
+- `constructor()`: Инициализирует состояние корзины.
+- `findItem(item: IProduct): number | undefined`: Находит товар в корзине.
+- `addItem(item: IProduct)`: Добавляет товар в корзину.
+- `removeItem(item: IProduct)`: Удаляет товар из корзины.
+- `clear()`: Очищает корзину.
+- `count(): number`: Возвращает количество товаров в корзине.
+- `get items(): IProduct[]`: Возвращает товары в корзине.
+- `get total(): number`: Возвращает общую стоимость товаров в корзине.
+
+---
+
+#### **OrderState**
+
+**Описание**: Состояние заказа, управляет информацией о заказе.
+
+**Методы**:
+- `clear()`: Очищает информацию о заказе.
+- `get value(): IOrder`: Возвращает текущее состояние заказа.
+- `set value(value: IOrder)`: Устанавливает состояние заказа.
+- `get isPaymentValidated(): boolean`: Проверяет валидность информации об оплате.
+- `get isContactsValidated(): boolean`: Проверяет валидность контактной информации.
+- `get payment(): IOrder['payment']`: Возвращает информацию об оплате.
+- `set payment(value: IOrder['payment'])`: Устанавливает информацию об оплате.
+- `get address(): IOrder['address']`: Возвращает адрес доставки.
+- `set address(value: string)`: Устанавливает адрес доставки.
+- `get email(): IOrder['email']`: Возвращает электронную почту.
+- `set email(value: string)`: Устанавливает электронную почту.
+- `get phone(): IOrder['phone']`: Возвращает телефон.
+- `set phone(value: string)`: Устанавливает телефон.
+- `get items(): IOrder['items']`: Возвращает товары в заказе.
+- `set items(value: IOrder['items'])`: Устанавливает товары в заказе и общую стоимость.
+
+---
+
+## Основной модуль приложения
+
+Может зависеть от модулей следующих слоев: модели, сервисы и UI-компоненты. Не зависит от API браузера.
 
 `index.ts`
-* точка входа в приложение
-* создание сервисов и UI-компонентов приложения
-* добавление событий в EventEmitter и подключение их обработчиков
-* запуск получения товаров с сервера и заполнение компонента начальной страницы
+
+## Назначение файла
+Файл `index.ts` является точкой входа в приложение. Он отвечает за инициализацию основных компонентов системы, установку связей между ними через события и запуск первоначальной загрузки данных.
+
+## Основные действия файла
+- Импорт стилей и утилит.
+- Импорт констант и компонентов.
+- Создание экземпляров основных классов и установка связей между ними.
+- Подписка на события и определение реакций на них.
+- Инициализация начального состояния приложения и загрузка каталога продуктов.
+
+## Ключевые компоненты инициализируемые в файле
+- `EventEmitter`: Управляет событиями в приложении.
+- `ShopAPI`: Обеспечивает взаимодействие с внешним API для получения и отправки данных.
+- `Page`: Управляет отображением элементов на странице.
+- `Modal`: Управляет модальными окнами.
+- `AppState`: Хранит и управляет состоянием приложения.
+- `BasketState` и `OrderState`: Управляют состоянием корзины и заказа соответственно.
+
+## Процесс работы файла
+1. Импортируются необходимые стили, утилиты, константы и компоненты.
+2. Создаются шаблоны для различных частей интерфейса.
+3. Инициализируются основные компоненты системы и устанавливаются связи между ними.
+4. Определяются реакции на события, такие как добавление товара в корзину или изменение данных заказа.
+5. Запускается начальная загрузка каталога продуктов и устанавливается начальное состояние приложения.
+
+## Взаимодействие компонентов
+Компоненты взаимодействуют друг с другом через систему событий `EventEmitter`. Например, при добавлении товара в корзину, компонент `Card` генерирует событие, на которое подписан компонент `Basket`, и таким образом обновляется состояние корзины.
+
+## Используемые данные
+- `IProduct`: Тип данных, описывающий продукт.
+- `IOrderForm`: Тип данных, описывающий форму заказа.
+- `Validation`: Тип данных для валидации.
 
 
-### Интерфейсы взаимодействия с внешним миром 
-Эти интерфейсы - часть приложения. Сервисы, которые будет использовать приложение, должны реализовать эти интерфейсы. Таким образом мы сможем при необходимости заменить их без изменения самого приложения
-
-```javascript
-
-export interface IShopAPI {
-    getCardItem: (id: string) => Promise<IProduct>;
-    getCatalog: () => Promise<IProduct[]>;
-    getBasketItems: () => Promise<IProduct[]>;
-    createOrder: (order: IOrderForm) => Promise<IOrderResult>;
-}
-
-```
-
-### Интерфейсы UI-компонентов
-Эти интерфейсы - часть приложения. Компоненты, которые будет вызывать приложение, должны соответствовать этим интерфейсам. 
-
-```javascript
-
-export interface IViewConstructor {
-    new (container: HTMLElement, events?: IEventEmitter):IView;
-}
-
-export interface IView {
-    render(data?: object): HTMLElement;
-}
-```
-
-## Сервисы
-
-Классы для взаимодействия приложения с внешним миром. Реализуют вышеуказанные интерфейсы.
-
-### Сервис "API сервера Web Larek"
-
-Назначение - взаимодействие с сервером
-
-```javascript
-
-export class ShopAPI extends Api implements IShopAPI {
-    readonly cdn: string;
-    constructor(cdn: string, baseUrl: string, options?: RequestInit) {
-        super(baseUrl, options);
-        this.cdn = cdn;
-    }
-
-    getCardItem(id: string): Promise<IProduct> {
-        return this.get(`/product/${id}`).then(
-            (item: IProduct) => ({
-                ...item,
-                image: this.cdn + item.image,
-            })
-        );
-    }
-    
-
-    getCatalog(): Promise<IProduct[]> {
-        return this.get('/product').then((data: ApiListResponse<IProduct>) =>
-            data.items.map((item) => ({
-                ...item,
-                image: this.cdn + item.image
-            }))
-        );
-    }
-
-    getBasketItems(): Promise<IProduct[]> {
-        return this.get('/basket/items')
-        .then((data: ApiListResponse<IProduct>) => data.items);
-    }
-
-    createOrder(order: IOrderForm): Promise<IOrderResult> {
-        return this.post('/order', order)
-        .then((data: IOrderResult) => data);
-    }
-}
-```
-
-## UI-компоненты
-
-### Базовый компонент
-
-Не зависит от приложения. Предоставляет метод render, который вызывает соответствующие переданному аргументу сеттеры дочернего компонента
-
-```javascript
-
-export abstract class Component<T> {
-    protected constructor(protected readonly container: HTMLElement) {
-        // Учитывайте что код в конструкторе исполняется ДО всех объявлений в дочернем классе
-    }
-
-    // Инструментарий для работы с DOM в дочерних компонентах
-
-    // Переключить класс
-    toggleClass(element: HTMLElement, className: string, force?: boolean) {
-        element.classList.toggle(className, force);
-    }
-
-    // Установить текстовое содержимое
-    protected setText(element: HTMLElement, value: unknown) {
-        if (element) {
-            element.textContent = String(value);
-        }
-    }
-
-    // Сменить статус блокировки
-    setDisabled(element: HTMLElement, state: boolean) {
-        if (element) {
-            if (state) element.setAttribute('disabled', 'disabled');
-            else element.removeAttribute('disabled');
-        }
-    }
-
-    // Скрыть
-    protected setHidden(element: HTMLElement) {
-        element.style.display = 'none';
-    }
-
-    // Показать
-    protected setVisible(element: HTMLElement) {
-        element.style.removeProperty('display');
-    }
-
-    // Установить изображение с алтернативным текстом
-    protected setImage(element: HTMLImageElement, src: string, alt?: string) {
-        if (element) {
-            element.src = src;
-            if (alt) {
-                element.alt = alt;
-            }
-        }
-    }
-
-    // Вернуть корневой DOM-элемент
-    render(data?: Partial<T>): HTMLElement {
-        Object.assign(this as object, data ?? {});
-        return this.container;
-    }
-}
-```

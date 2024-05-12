@@ -2,9 +2,10 @@ import {Component} from "../base/Component";
 import {IEvents} from "../base/events";
 import {ensureElement} from "../../utils/utils";
 
-interface IFormState {
-    valid: boolean;
-    errors: string[];
+export interface IFormState {
+    errors?: string[];
+    valid?: boolean;
+    
 }
 
 export class Form<T> extends Component<IFormState> {
@@ -24,6 +25,7 @@ export class Form<T> extends Component<IFormState> {
             this.onInputChange(field, value);
         });
 
+
         this.container.addEventListener('submit', (e: Event) => {
             e.preventDefault();
             this.events.emit(`${this.container.name}:submit`);
@@ -37,13 +39,14 @@ export class Form<T> extends Component<IFormState> {
         });
     }
 
-    set valid(value: boolean) {
-        this._submit.disabled = !value;
-    }
-
     set errors(value: string) {
         this.setText(this._errors, value);
     }
+
+	set valid(value: boolean) {
+        this._submit.disabled = !value;
+    }
+    
 
     render(state: Partial<T> & IFormState) {
         const {valid, errors, ...inputs} = state;
@@ -52,4 +55,6 @@ export class Form<T> extends Component<IFormState> {
         return this.container;
 
     }
+
+    
 }
