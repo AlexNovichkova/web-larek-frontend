@@ -1,7 +1,7 @@
 # Проектная работа "Веб-ларек"
 
 MVP интернет-магазина с каталогом, корзиной и оформлением заказа.
-
+[Ссылка на gh-pages](https://alexnovichkova.github.io/web-larek-frontend/)
 <img width="537" alt="WebLarek" src="https://github.com/user-attachments/assets/add32bb6-4956-4463-9a0f-fa37f4d2ef00" />
 
 **Стек:** HTML, SCSS, TS, Webpack
